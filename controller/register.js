@@ -1,22 +1,23 @@
 
 import { sendOtpEmail } from "../config/email.js";
-import { generateOtp } from "../helper/otp.js";
-import RegisterModel from "../model/register.model.js";
-import { registerSchema ,loginSchema} from "../validator/authValidator.js";
+import { message } from "../helper/messagehelper.js";
+import { generateOtp ,getNowISO} from "../helper/otp.js";
+import RegisterModel, { loginSchema, RegisterSchema } from "../model/register.model.js";
+//import { registerSchema ,loginSchema} from "../validator/authValidator.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 
 export const registerUser  = async (req, res, next) => {
     try {
-        const { error } = registerSchema.validate(req.body, {
+        const { error } = RegisterSchema.validate(req.body, {
             abortEarly: false
         });
 
         if (error) {
             return res.status(400).json({
                 status: 400,
-                message: 'Validation failed',
+                message:message.validation,
                 errors: error.details.map(err => err.message.toString())
             });
         }
@@ -27,21 +28,24 @@ export const registerUser  = async (req, res, next) => {
         if (existingUser) {
             return res.status(400).json({
                 status: 400,
-                message: 'User already exists with this email'
+                message: message.alreadyExists
             });
         }
 
         const hashPassword = await bcrypt.hash(password, 10);
 
         const otp = generateOtp();
-        const otpsendDate = new Date();
-        const otpExpiry = new Date(Date.now() + 2 * 60 * 1000);
+        const otpsendDate = new Date(getNowISO());
+        const otpExpiry = new Date(
+          new Date(getNowISO()).getTime() + 2 * 60 * 1000
+        );
+
 
         
         if (!otp) {
             return res.status(500).json({
                 status: 500,
-                message: 'Failed to generate OTP'
+                message: message.otpfailed
             });
         }
 
@@ -52,11 +56,13 @@ export const registerUser  = async (req, res, next) => {
             location,
             gender,
             profilePic,
-            role: role || "user",
+            role: role || "Admin",
             otp: otp,
             otpExpiry: otpExpiry,
             otpsendDate: otpsendDate,
             isVerified: false,
+            
+           
         });
 
         const savedUser = await newUser.save();
@@ -74,7 +80,7 @@ export const registerUser  = async (req, res, next) => {
 
         return res.status(201).json({
             status: 201,
-            message: 'User registered successfully',
+            message:message.register,
             data: {
                 id: newUser._id,
                 email: newUser.email,
@@ -84,11 +90,9 @@ export const registerUser  = async (req, res, next) => {
         });
 
     } catch (error) {
-
-        console.error('Error in Signup:', error);
         return res.status(500).json({
             status: 500,
-            message: 'Internal Server Error',
+            message: message.servererror,
             errors: error.message
         });
     }
@@ -99,8 +103,8 @@ export const loginUser = async (req, res, next) => {
         if (!req.body) {
             return res.status(400).json({
                 status: 400,
-                message: 'Request body is required',
-                errors: 'Please provide email and password in the request body'
+                message: message.requestbody,
+                errors: message.emailrequired
             });
         }
 
@@ -111,7 +115,7 @@ export const loginUser = async (req, res, next) => {
         if (error) {
             return res.status(400).json({
                 status: 400,
-                message: 'Validation failed',
+                message: message.validation,
                 errors: error.details.map(err => err.message.toString())
             });
         }
@@ -121,21 +125,21 @@ export const loginUser = async (req, res, next) => {
         if (!user) {
             return res.status(400).json({   
                 status: 400,
-                message: 'Invalid email or password'
+                message: message.invalidfield
             });
         }
 
         if (!user.isVerified) {
          return res.status(403).json({
         status: 403,
-        message: "OTP not verified. Please verify your account.",
+        message: message.otpnotverify,
           });
         }
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
             return res.status(400).json({
                 status: 400,
-                message: 'Invalid email or password'
+                message: message.invalidfield
             });
         }
 
@@ -148,7 +152,7 @@ export const loginUser = async (req, res, next) => {
 
         return res.json({
             status: 200,
-            message: 'Login successful',
+            message: message.loginsucess,
             data: { 
                 id: user._id,
                 email: user.email,
@@ -156,10 +160,9 @@ export const loginUser = async (req, res, next) => {
             }
         });
     } catch (error) {
-        console.error('Error in Login', error);
         return res.status(500).json({
             status: 500,
-            message: 'Internal Server Error',
+            message: message.servererror,
             errors: error.message
         });
     }
@@ -170,8 +173,8 @@ export const verifyOtp = async (req, res, next) => {
         if (!req.body) {
             return res.status(400).json({
                 status: 400,
-                message: 'Request body is required',
-                errors: 'Please provide email and otp'
+                message:message.requestbody,
+                errors: message.otprequired,
             });
         }
 
@@ -180,8 +183,8 @@ export const verifyOtp = async (req, res, next) => {
         if (!email || !otp) {
             return res.status(400).json({
                 status: 400,
-                message: 'Validation failed',
-                errors: 'Email and OTP are required'
+                message:message.validation,
+                errors: message.otprequired,
             });
         }
 
@@ -189,14 +192,14 @@ export const verifyOtp = async (req, res, next) => {
         if (!user) {
             return res.status(404).json({
                 status: 404,
-                message: 'User not found'
+                message:message.usernotfound,
             });
         }
 
         if (user.isVerified) {
             return res.status(400).json({
                 status: 400,
-                message: 'User already verified'
+                message:message.useralreadyverify,
             });
         }
 
@@ -204,7 +207,7 @@ export const verifyOtp = async (req, res, next) => {
         if (user.otp !== otp) {
             return res.status(400).json({
                 status: 400,
-                message: 'Invalid OTP'
+                message: message.invalidotp
             });
         }
 
@@ -212,7 +215,7 @@ export const verifyOtp = async (req, res, next) => {
         if (user.otpExpiry && new Date() > user.otpExpiry) {
             return res.status(400).json({
                 status: 400,
-                message: 'OTP has expired. Please request a new OTP.'
+                message: message.otpexpired,
             });
         }
 
@@ -231,7 +234,7 @@ export const verifyOtp = async (req, res, next) => {
 
         return res.status(200).json({
             status: 200,
-            message: 'OTP verified successfully',
+            message: message.otpverify,
             data: {
                 id: user._id,
                 email: user.email,
@@ -241,10 +244,9 @@ export const verifyOtp = async (req, res, next) => {
         });
 
     } catch (error) {
-        console.error('Error in OTP Verification:', error);
         return res.status(500).json({
             status: 500,
-            message: 'Internal Server Error',
+            message: message.servererror,
             errors: error.message
         });
     }

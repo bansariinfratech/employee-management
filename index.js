@@ -1,10 +1,8 @@
-import mongoose from 'mongoose';
 import { connectDB } from './config/db.js';
 import express from 'express';
 import routerv1 from './routes/v1.js';
 import swaggerUi from 'swagger-ui-express';
 import fs from 'fs';
-import swaggerAutogen from 'swagger-autogen';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,6 +10,7 @@ const PORT = process.env.PORT || 3000;
 const swaggerDocument = JSON.parse(fs.readFileSync("swagger-output.json", "utf-8"));
 
 app.use(express.json());
+app.use('uploads',express.static('uploads'));
 app.use('/api/v1', routerv1);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 (async () => {
