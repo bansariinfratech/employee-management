@@ -1,11 +1,13 @@
 
 import { sendOtpEmail } from "../config/email.js";
 import { message } from "../helper/messagehelper.js";
-import { generateOtp ,getNowISO} from "../helper/otp.js";
+import { generateOtp ,getNowISO} from "../helper/methods.js";
 import RegisterModel, { loginSchema, RegisterSchema } from "../model/register.model.js";
 //import { registerSchema ,loginSchema} from "../validator/authValidator.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { createUser, findUserByEmail,saveUser } from "../helper/register.js";
+
 
 
 export const registerUser  = async (req, res, next) => {
@@ -24,7 +26,7 @@ export const registerUser  = async (req, res, next) => {
 
         const { email, password, dob, gender, role, location, profilePic } = req.body;
 
-        const existingUser = await RegisterModel.findOne({ email: email });
+        const existingUser = await findUserByEmail(email);
         if (existingUser) {
             return res.status(400).json({
                 status: 400,
@@ -39,9 +41,7 @@ export const registerUser  = async (req, res, next) => {
         const otpExpiry = new Date(
           new Date(getNowISO()).getTime() + 2 * 60 * 1000
         );
-
-
-        
+  
         if (!otp) {
             return res.status(500).json({
                 status: 500,
@@ -61,12 +61,10 @@ export const registerUser  = async (req, res, next) => {
             otpExpiry: otpExpiry,
             otpsendDate: otpsendDate,
             isVerified: false,
-            
-           
+          
         });
 
-        const savedUser = await newUser.save();
-        
+        const savedUser = await createUser(newUser);
        
         if (!savedUser.otp || !savedUser.otpsendDate) {
             console.error('OTP not save', {
@@ -121,7 +119,7 @@ export const loginUser = async (req, res, next) => {
         }
         const { email, password } = req.body;
 
-        const user = await RegisterModel.findOne({ email: email });
+        const user = await findUserByEmail(email);
         if (!user) {
             return res.status(400).json({   
                 status: 400,
@@ -188,7 +186,7 @@ export const verifyOtp = async (req, res, next) => {
             });
         }
 
-        const user = await RegisterModel.findOne({ email: email });
+        const user = await findUserByEmail(email);
         if (!user) {
             return res.status(404).json({
                 status: 404,
@@ -230,7 +228,7 @@ export const verifyOtp = async (req, res, next) => {
         user.isVerified = true;
         user.otp = null;
         user.otpExpiry = null;
-        await user.save();
+        await saveUser(user);
 
         return res.status(200).json({
             status: 200,

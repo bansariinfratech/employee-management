@@ -4,6 +4,8 @@ import RegisterModel from "../model/register.model.js";
 import bcrypt from "bcrypt";
 import mongoose from "mongoose";
 import { ProfileSchema } from "../model/profile.model.js";
+import { message } from "../helper/messagehelper.js";
+import {  FindByIdAndUpdate, FindUserByEmail, finduserById } from "../helper/profile.js";
 
 export const updateProfile = async(req,res,next) =>{
     try{
@@ -29,14 +31,14 @@ export const updateProfile = async(req,res,next) =>{
             });
         }
 
-        const user = await RegisterModel.findById(id);
-        
-        if(!user){
-            return res.status(404).json({
-                status:404,
-                message:message.usernotfound,
-            });
-        }
+          const user = await finduserById(id);
+            
+            if(!user){
+                return res.status(404).json({
+                    status:404,
+                    message:message.usernotfound,
+                });
+            }
 
         const userId = user._id;
 
@@ -55,7 +57,7 @@ export const updateProfile = async(req,res,next) =>{
 
         if(email && email !== user.email) {
          
-            const emailExists = await RegisterModel.findOne({ email: email });
+            const emailExists = await FindUserByEmail(email);
             if(emailExists) {
                 return res.status(400).json({
                     status: 400,
@@ -70,11 +72,14 @@ export const updateProfile = async(req,res,next) =>{
 
          await user.save();
      
-        const updatedProfile = await RegisterModel.findByIdAndUpdate(
-            userId,
-            {$set: updateProfileData},
-            {new: true, runValidators: true}
-        );
+        const updatedProfile = await FindByIdAndUpdate(userId, updateProfileData);
+
+        if(!updatedProfile){    
+            return res.status(500).json({
+                status:500,
+                message:message.profileupdatefailed
+            });
+        }
 
         return res.json({
             status:200,
@@ -110,7 +115,7 @@ export const getProfile = async(req,res,next) =>{
             });
         }
 
-      const user = await RegisterModel.findById(userIdOrEmail);
+      const user = await finduserById(userIdOrEmail);
         
         if(!user){
             return res.status(404).json({
@@ -131,8 +136,7 @@ export const getProfile = async(req,res,next) =>{
                 role: user.role,
                profilePic: `${req.protocol}://${req.get("host")}/auth/profilepic`,
                 isVerified: user.isVerified,
-                createdAt: getIsoString(user.createdAt),
-                updatedAt: getIsoString(user.updatedAt),
+              
             }
         });
 
@@ -162,7 +166,7 @@ export const uploadProfile = async (req, res, next) => {
       });
     }
 
-    const user = await RegisterModel.findById(userId);
+    const user = await finduserById(userId);
     if (!user) {
       return res.status(404).json({
         status: 404,
