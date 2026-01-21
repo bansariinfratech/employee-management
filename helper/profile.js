@@ -1,3 +1,4 @@
+
 import RegisterModel from "../model/register.model.js";
 
 export const finduserById = async (id) => {

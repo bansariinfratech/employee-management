@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
 import { registerUser, loginUser, verifyOtp } from '../controller/register.js';
-import { updateProfile, getProfile, uploadProfile } from '../controller/profile.js';
+import { updateProfile, getProfile, uploadProfile, address } from '../controller/profile.js';
 import { verifyToken } from '../middlewear/auth.js';
 import { upload } from '../middlewear/upload.js';
 
@@ -20,7 +20,10 @@ routerv1.post('/auth/verify-otp', verifyOtp);
 
 routerv1.put('/auth/updateProfile', verifyToken,upload.single("profilepic"), updateProfile);
 routerv1.get('/auth/profile', verifyToken, getProfile);
+routerv1.post('/auth/address', address);
+
 
 routerv1.post('/auth/upload', verifyToken,upload.single("profilepic"),uploadProfile);
+
 
 export default routerv1;

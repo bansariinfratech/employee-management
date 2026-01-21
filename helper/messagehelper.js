@@ -24,6 +24,7 @@ export const message = {
     emailalreadyexists:"Email already exists",
     profileupdate:"Profile updated successfully",
     profileretrieved:"Profile retrieved successfully",
+    prifileupdatefailed:"Profile update failed",
 
     imageuploaded:"Profile image uploaded successfully",
     filenotuploaded:"No file uploaded"
